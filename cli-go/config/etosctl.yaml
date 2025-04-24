@@ -1,0 +1,18 @@
+# ETOS CLI Configuration
+
+# Logging configuration
+log:
+  # Log level: debug, info, warning, error
+  level: info
+
+# Plugin configuration
+plugins:
+  # Directory containing plugin files
+  dir: plugins
+
+# ETOS server configuration
+server:
+  # ETOS server URL
+  url: http://localhost:8080
+  # Authentication token (if required)
+  token: "" 
