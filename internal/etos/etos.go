@@ -335,8 +335,12 @@ func (r *ETOSDeployment) environmentProviderConfig(ctx context.Context, name typ
 
 // ingress creates an ingress resource definition for ETOS.
 func (r *ETOSDeployment) ingress(name types.NamespacedName) *networkingv1.Ingress {
+	metaObj := r.meta(name)
+	metaObj.Annotations["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "21600"
+	metaObj.Annotations["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "21600"
+	metaObj.Annotations["nginx.ingress.kubernetes.io/proxy-buffering"] = "off"
 	ingress := &networkingv1.Ingress{
-		ObjectMeta: r.meta(name),
+		ObjectMeta: metaObj,
 		Spec: networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{r.ingressRule(name)},
 		},
