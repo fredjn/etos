@@ -15,14 +15,16 @@
 # limitations under the License.
 """ETOS test run handler."""
 
+import datetime
 import logging
 import sys
 import time
 from uuid import UUID
 from typing import Iterator, Union
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-from etos_client.sse.v1.protocol import Message, Report, Artifact
+from etos_client.sse.v1.protocol import Message, Report, Artifact, Ping
 from etos_client.sse.v1.client import SSEClient
 from etos_client.shared.events import Event
 from etos_client.shared.downloader import Downloader, Downloadable
@@ -63,7 +65,7 @@ class TestRun:
             loglevel = logging.WARNING
         rhandler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
-            fmt="[%(rtime)s] %(levelname)s:%(rname)s: %(message)s",
+            fmt="[%(rtime)s] [%(reventid)s] %(levelname)s:%(rname)s: %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         rhandler.setFormatter(formatter)
@@ -171,20 +173,24 @@ class TestRun:
             )
 
     def __log(self, message: Message) -> None:
-        """Log a message from the ETOS log API."""
+        """Log a message from the ETOS log API, including the SSE event id and sent timestamp."""
         logger = getattr(self.remote_logger, message.level)
+        extra = {
+            "rname": message.name,
+            "rtime": message.datestring,
+        }
+        # Only include event id if logger is set to DEBUG
+        if self.remote_logger.isEnabledFor(logging.DEBUG):
+            extra["reventid"] = getattr(message, "id", None)
         logger(
             message,
-            extra={
-                "rname": message.name,
-                "rtime": message.datestring,
-            },
+            extra=extra,
         )
 
     def __log_until_eof(
         self, sse_client: SSEClient, stream_id: str, endtime: float
     ) -> Iterator[Event]:
-        """Log from the ETOS log API until finished."""
+        """Log from the ETOS log API until finished, including Ping events."""
         for event in sse_client.event_stream(stream_id):
             if time.time() >= endtime:
                 raise TimeoutError("Timed out!")
