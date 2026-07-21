@@ -20,7 +20,6 @@ import os
 import shutil
 import time
 from json import JSONDecodeError
-from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
@@ -148,14 +147,22 @@ class Etos:
         etos_library = ETOSLibrary("ETOS Client", os.getenv("HOSTNAME"), "ETOS Client")
         os.environ["ETOS_GRAPHQL_SERVER"] = response.event_repository
 
-        report_dir, artifact_dir = directories(self.args)
+        report_dir, artifact_dir, workspace_dir = directories(self.args)
+        skip_download = bool(self.args.get("--skip-download"))
 
         collector = Collector(etos_library, graphql)
         log_downloader = Downloader()
         clear_queue = True
         log_downloader.start()
         try:
-            test_run = TestRun(collector, log_downloader, report_dir, artifact_dir)
+            test_run = TestRun(
+                collector,
+                log_downloader,
+                report_dir,
+                artifact_dir,
+                skip_download=skip_download,
+                workspace_dir=workspace_dir,
+            )
             test_run.setup_logging(self.args["-v"])
             events = test_run.track(
                 self.sse_client,
@@ -172,10 +179,9 @@ class Etos:
         self.logger.info(
             "Downloaded a total of %d logs from test runners", len(log_downloader.downloads)
         )
-        self.logger.info("Archiving reports.")
-        shutil.make_archive(
-            str(artifact_dir.joinpath("reports").relative_to(Path.cwd())), "zip", report_dir
-        )
+        if not skip_download:
+            self.logger.info("Archiving reports.")
+            shutil.make_archive(str(artifact_dir.joinpath("reports")), "zip", report_dir)
         self.logger.info("Reports: %s", report_dir)
         self.logger.info("Artifacts: %s", artifact_dir)
 

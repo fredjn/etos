@@ -19,11 +19,12 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 from etos_lib.messaging.events import Artifact, Message, Report, Shutdown
 
 from etos_client.shared.downloader import Downloadable, Downloader
+from etos_client.shared.manifest import ManifestWriter
 from etos_client.sse.v2alpha.client import SSEClient
 
 from ..schema.response import ResponseSchema
@@ -40,13 +41,25 @@ class TestRun:
     # interval.
     log_interval = 120
 
-    def __init__(self, downloader: Downloader, report_dir: Path, artifact_dir: Path) -> None:
+    def __init__(
+        self,
+        downloader: Downloader,
+        report_dir: Path,
+        artifact_dir: Path,
+        skip_download: bool = False,
+        workspace_dir: Optional[Path] = None,
+    ) -> None:
         """Initialize."""
         assert downloader.started, "Downloader must be started before it can be used in TestRun"
+        assert not skip_download or workspace_dir is not None, "Workspace is required for manifest"
 
         self.__downloader = downloader
         self.__report_dir = report_dir
         self.__artifact_dir = artifact_dir
+        self.__manifest = (
+            ManifestWriter(artifact_dir) if skip_download and workspace_dir is not None else None
+        )
+        self.__skip_download = skip_download
 
     def setup_logging(self, verbosity: int) -> None:
         """Set up logging for ETOS remote logs."""
@@ -102,9 +115,11 @@ class TestRun:
 
     def download_report(self, report: Report):
         """Download a report to the report directory."""
-        reports = self.__report_dir.relative_to(Path.cwd()).joinpath(
-            report.data.directory or "",
-        )
+        if self.__skip_download:
+            assert self.__manifest is not None
+            self.__manifest.add(report.data.name, report.data.url)
+            return
+        reports = self.__report_dir.joinpath(report.data.directory or "")
         self.__downloader.queue_download(
             Downloadable(
                 url=report.data.url,
@@ -116,9 +131,11 @@ class TestRun:
 
     def download_artifact(self, artifact: Artifact):
         """Download an artifact to the artifact directory."""
-        artifacts = self.__artifact_dir.relative_to(Path.cwd()).joinpath(
-            artifact.data.directory or ""
-        )
+        if self.__skip_download:
+            assert self.__manifest is not None
+            self.__manifest.add(artifact.data.name, artifact.data.url)
+            return
+        artifacts = self.__artifact_dir.joinpath(artifact.data.directory or "")
         self.__downloader.queue_download(
             Downloadable(
                 url=artifact.data.url,

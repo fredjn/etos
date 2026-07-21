@@ -33,8 +33,7 @@ from etosctl.models import CommandMeta
 
 
 class Start(SubCommand):
-    """
-    Client for executing test automation suites in ETOS.
+    """Client for executing test automation suites in ETOS.
 
     Usage: etosctl testrun v0 start [-v|-vv] [options] [--dataset=DATASET]... -i IDENTITY -s TEST_SUITE <cluster>
 
@@ -47,6 +46,7 @@ class Start(SubCommand):
         -w WORKSPACE, --workspace WORKSPACE                       Which workspace to do all the work in.
         -a ARTIFACT_DIR, --artifact-dir ARTIFACT_DIR              Where test artifacts should be stored. Relative to workspace.
         -r REPORT_DIR, --report-dir REPORT_DIR                    Where test reports should be stored. Relative to workspace.
+        --skip-download                                           Skip downloading artifacts and reports and write file_manifest.json instead.
         -d DOWNLOAD_REPORTS, --download-reports DOWNLOAD_REPORTS  This parameter is no longer in use.
         --iut-provider IUT_PROVIDER                               Which IUT provider to use.
         --execution-space-provider EXECUTION_SPACE_PROVIDER       Which execution space provider to use.
